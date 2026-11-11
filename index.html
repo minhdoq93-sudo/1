@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rắn Săn Mồi</title>
+<style>
+  body { margin:0; min-height:100vh; display:flex; flex-direction:column; align-items:center;
+         justify-content:center; background:#111827; color:#e5e7eb; font-family:system-ui,sans-serif; }
+  h1 { margin:0 0 8px; font-size:24px; }
+  #info { margin-bottom:8px; display:flex; gap:24px; }
+  canvas { background:#1f2937; border:3px solid #374151; border-radius:8px; max-width:95vw; touch-action:none; }
+  p { color:#9ca3af; font-size:14px; }
+</style>
+</head>
+<body>
+<h1>🐍 Rắn Săn Mồi</h1>
+<div id="info"><span>Điểm: <b id="score">0</b></span><span>Kỷ lục: <b id="best">0</b></span></div>
+<canvas id="c" width="400" height="400"></canvas>
+<p>Phím mũi tên / WASD để di chuyển · Vuốt trên điện thoại · Space để chơi lại</p>
+<script>
+const canvas = document.getElementById('c'), ctx = canvas.getContext('2d');
+const N = 20, S = canvas.width / N;
+let snake, dir, nextDir, food, score, best = 0, timer, over;
+try { best = +localStorage.getItem('snakeBest') || 0; } catch (e) {}
+document.getElementById('best').textContent = best;
+
+function reset() {
+  snake = [{x:10,y:10},{x:9,y:10},{x:8,y:10}];
+  dir = nextDir = {x:1,y:0};
+  score = 0; over = false;
+  document.getElementById('score').textContent = 0;
+  placeFood();
+  clearInterval(timer);
+  timer = setInterval(tick, 110);
+}
+function placeFood() {
+  do { food = {x:Math.floor(Math.random()*N), y:Math.floor(Math.random()*N)}; }
+  while (snake.some(s => s.x===food.x && s.y===food.y));
+}
+function tick() {
+  dir = nextDir;
+  const h = {x:snake[0].x+dir.x, y:snake[0].y+dir.y};
+  if (h.x<0||h.y<0||h.x>=N||h.y>=N||snake.some(s=>s.x===h.x&&s.y===h.y)) return gameOver();
+  snake.unshift(h);
+  if (h.x===food.x && h.y===food.y) {
+    score++;
+    document.getElementById('score').textContent = score;
+    placeFood();
+  } else snake.pop();
+  draw();
+}
+function gameOver() {
+  over = true; clearInterval(timer);
+  if (score > best) {
+    best = score; document.getElementById('best').textContent = best;
+    try { localStorage.setItem('snakeBest', best); } catch (e) {}
+  }
+  draw();
+  ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+  ctx.font = 'bold 32px system-ui'; ctx.fillText('Thua rồi!', 200, 190);
+  ctx.font = '16px system-ui'; ctx.fillText('Nhấn Space hoặc chạm để chơi lại', 200, 225);
+}
+function draw() {
+  ctx.fillStyle = '#1f2937'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = '#ef4444';
+  ctx.beginPath(); ctx.arc(food.x*S+S/2, food.y*S+S/2, S/2-2, 0, 7); ctx.fill();
+  snake.forEach((s,i) => {
+    ctx.fillStyle = i===0 ? '#34d399' : '#10b981';
+    ctx.fillRect(s.x*S+1, s.y*S+1, S-2, S-2);
+  });
+}
+function turn(x, y) { if (x !== -dir.x || y !== -dir.y) nextDir = {x, y}; }
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k==='arrowup'||k==='w') turn(0,-1);
+  else if (k==='arrowdown'||k==='s') turn(0,1);
+  else if (k==='arrowleft'||k==='a') turn(-1,0);
+  else if (k==='arrowright'||k==='d') turn(1,0);
+  else if (k===' ' && over) reset();
+  if (k.startsWith('arrow') || k===' ') e.preventDefault();
+});
+let t0;
+canvas.addEventListener('touchstart', e => { t0 = e.touches[0]; if (over) reset(); });
+canvas.addEventListener('touchend', e => {
+  const t = e.changedTouches[0], dx = t.clientX-t0.clientX, dy = t.clientY-t0.clientY;
+  if (Math.abs(dx) > Math.abs(dy)) turn(dx>0?1:-1, 0); else turn(0, dy>0?1:-1);
+});
+reset(); draw();
+</script>
+</body>
+</html>
